@@ -1,1329 +1,759 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Real-Time Chat App with Socket.IO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat App - Code Pairing System</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
-        /* Mobile First Design */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-
-        :root {
-            --primary: #4361ee;
-            --primary-dark: #3a56d4;
-            --secondary: #7209b7;
-            --success: #4cc9f0;
-            --danger: #f72585;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --gray: #6c757d;
-            --light-gray: #e9ecef;
-            --border-radius: 16px;
-            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
-
+        
         body {
-            font-family: 'Segoe UI', 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: var(--dark);
-            line-height: 1.5;
-            min-height: 100vh;
-            padding: 0;
-            overflow-x: hidden;
-        }
-
-        .app-container {
-            max-width: 100%;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            background-color: rgba(255, 255, 255, 0.95);
-        }
-
-        /* Header */
-        .app-header {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            color: white;
-            padding: 20px 16px;
-            text-align: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .app-header h1 {
-            font-size: 1.5rem;
-            margin-bottom: 5px;
-            display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 12px;
+            padding: 20px;
         }
-
-        .app-header p {
-            font-size: 0.9rem;
-            opacity: 0.9;
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
         }
-
-        /* Main Content */
-        .main-content {
-            flex: 1;
-            padding: 20px 16px;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* Connection Flow Guide */
-        .connection-flow {
+        
+        header {
+            background: linear-gradient(to right, #2575fc, #6a11cb);
+            color: white;
+            padding: 20px;
+            text-align: center;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
-            position: relative;
         }
-
-        .flow-step {
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .logo i {
+            font-size: 2rem;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+        }
+        
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .left-panel, .right-panel {
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            align-items: center;
+        }
+        
+        .left-panel {
             flex: 1;
-            position: relative;
-            z-index: 2;
+            border-right: 1px solid #eee;
+            max-width: 300px;
+            background-color: #f9f9f9;
         }
-
-        .step-circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: var(--light-gray);
-            color: var(--gray);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-bottom: 8px;
-            border: 3px solid white;
-            box-shadow: var(--box-shadow);
-            transition: all 0.3s ease;
+        
+        .right-panel {
+            flex: 2;
         }
-
-        .flow-step.active .step-circle {
-            background-color: var(--primary);
-            color: white;
-        }
-
-        .flow-step.completed .step-circle {
-            background-color: var(--success);
-            color: white;
-        }
-
-        .step-label {
-            font-size: 0.8rem;
-            text-align: center;
-            font-weight: 500;
-        }
-
-        .flow-connector {
-            position: absolute;
-            top: 20px;
-            left: 10%;
-            right: 10%;
-            height: 3px;
-            background-color: var(--light-gray);
-            z-index: 1;
-        }
-
-        /* Panels - Mobile friendly */
-        .panel {
-            background-color: white;
-            border-radius: var(--border-radius);
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: var(--box-shadow);
-            transition: transform 0.3s ease;
-        }
-
-        .panel:hover {
-            transform: translateY(-2px);
-        }
-
+        
         .panel-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
             font-size: 1.2rem;
-            color: var(--primary);
-            margin-bottom: 18px;
+            color: #2575fc;
+            margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid var(--light-gray);
+            border-bottom: 2px solid #eee;
         }
-
-        .panel-title i {
-            font-size: 1.3rem;
+        
+        .code-section {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
         }
-
-        /* My Code Section */
-        .my-code-section {
-            text-align: center;
-        }
-
+        
         .code-display {
-            font-size: 2.5rem;
+            font-size: 1.8rem;
             font-weight: bold;
-            letter-spacing: 8px;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 15px 0;
+            text-align: center;
+            letter-spacing: 3px;
+            color: #2575fc;
+            background-color: #f0f5ff;
             padding: 15px;
-            border: 3px dashed var(--light-gray);
-            border-radius: var(--border-radius);
+            border-radius: 10px;
+            margin: 15px 0;
+            border: 2px dashed #6a11cb;
         }
-
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
+        
         .btn {
-            padding: 14px 20px;
+            background: linear-gradient(to right, #2575fc, #6a11cb);
+            color: white;
             border: none;
-            border-radius: var(--border-radius);
-            font-weight: 600;
+            padding: 12px 20px;
+            border-radius: 10px;
             font-size: 1rem;
+            font-weight: 600;
             cursor: pointer;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            flex: 1;
-            transition: all 0.2s ease;
+            gap: 10px;
+            width: 100%;
+            margin-top: 10px;
         }
-
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 15px rgba(37, 117, 252, 0.4);
         }
-
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-        }
-
+        
         .btn-secondary {
-            background-color: var(--light-gray);
-            color: var(--dark);
+            background: linear-gradient(to right, #8e9eab, #eef2f3);
+            color: #333;
         }
-
-        .btn-secondary:hover {
-            background-color: #d1d9e6;
+        
+        .input-group {
+            margin-bottom: 20px;
         }
-
-        .btn-success {
-            background-color: var(--success);
-            color: white;
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
         }
-
-        .btn-success:hover {
-            background-color: #3ab0d8;
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border 0.3s;
         }
-
-        .btn-danger {
-            background-color: var(--danger);
-            color: white;
+        
+        .input-group input:focus {
+            border-color: #6a11cb;
+            outline: none;
         }
-
-        .btn-danger:hover {
-            background-color: #e11575;
+        
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
-
-        /* Enter Code Section */
-        .enter-code-form {
+        
+        .chat-header {
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 15px;
+        }
+        
+        .chat-partner {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2575fc;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f5f7fa;
+            border-radius: 15px;
+            margin-bottom: 20px;
             display: flex;
             flex-direction: column;
             gap: 15px;
         }
-
-        .input-group {
-            display: flex;
-            gap: 10px;
-        }
-
-        .code-input {
-            flex: 1;
-            padding: 16px;
-            border: 2px solid var(--light-gray);
-            border-radius: var(--border-radius);
-            font-size: 1.1rem;
-            text-align: center;
-            letter-spacing: 5px;
-            font-weight: bold;
-            text-transform: uppercase;
-            transition: border-color 0.3s;
-        }
-
-        .code-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        /* Status Section */
-        .status-section {
-            text-align: center;
-        }
-
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 24px;
-            background-color: var(--light-gray);
-            border-radius: 50px;
-            margin-bottom: 20px;
-        }
-
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: var(--gray);
-        }
-
-        .status-dot.connected {
-            background-color: var(--success);
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        .connection-info {
-            background-color: rgba(67, 97, 238, 0.1);
-            padding: 15px;
-            border-radius: var(--border-radius);
-            margin-top: 15px;
-        }
-
-        /* Chat Section */
-        .chat-section {
-            display: none;
-            flex-direction: column;
-            height: 100%;
-        }
-
-        .chat-header {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            color: white;
-            padding: 16px;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .chat-container {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-            background-color: #f5f7fb;
-            border-left: 1px solid var(--light-gray);
-            border-right: 1px solid var(--light-gray);
-            max-height: 50vh;
-            min-height: 300px;
-        }
-
+        
         .message {
-            margin-bottom: 16px;
-            max-width: 85%;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .message.received {
-            align-self: flex-start;
-        }
-
-        .message.sent {
-            align-self: flex-end;
-            margin-left: auto;
-        }
-
-        .message-content {
-            padding: 12px 16px;
+            max-width: 80%;
+            padding: 12px 18px;
             border-radius: 18px;
-            position: relative;
             word-wrap: break-word;
         }
-
-        .message.received .message-content {
-            background-color: white;
-            border-bottom-left-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .message.sent .message-content {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
+        
+        .message-sent {
+            align-self: flex-end;
+            background: linear-gradient(to right, #2575fc, #6a11cb);
             color: white;
             border-bottom-right-radius: 5px;
         }
-
-        .message-time {
-            font-size: 0.7rem;
-            color: var(--gray);
-            margin-top: 5px;
-            text-align: right;
+        
+        .message-received {
+            align-self: flex-start;
+            background-color: white;
+            color: #333;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
         }
-
-        .message.received .message-time {
-            text-align: left;
-        }
-
+        
         .message-sender {
             font-size: 0.8rem;
             font-weight: bold;
-            margin-bottom: 4px;
-            color: var(--primary);
+            margin-bottom: 5px;
         }
-
-        .message.sent .message-sender {
-            color: rgba(255, 255, 255, 0.9);
+        
+        .message-time {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            text-align: right;
+            margin-top: 5px;
         }
-
+        
         .chat-input-container {
-            padding: 16px;
-            background-color: white;
-            border-top: 1px solid var(--light-gray);
-            border-radius: 0 0 var(--border-radius) var(--border-radius);
             display: flex;
             gap: 10px;
         }
-
+        
         .chat-input {
             flex: 1;
-            padding: 14px 18px;
-            border: 2px solid var(--light-gray);
-            border-radius: 50px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 15px;
             font-size: 1rem;
-            transition: border-color 0.3s;
+            transition: border 0.3s;
         }
-
+        
         .chat-input:focus {
+            border-color: #6a11cb;
             outline: none;
-            border-color: var(--primary);
         }
-
+        
         .send-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(to right, var(--primary), var(--secondary));
+            background: linear-gradient(to right, #2575fc, #6a11cb);
             color: white;
             border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 60px;
+            border-radius: 15px;
+            font-size: 1.5rem;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
         }
-
+        
         .send-btn:hover {
             transform: scale(1.05);
         }
-
-        .send-btn:active {
-            transform: scale(0.95);
-        }
-
-        /* System Messages */
-        .system-message {
-            text-align: center;
-            margin: 15px 0;
-            font-size: 0.9rem;
-            color: var(--gray);
-        }
-
-        /* Instructions */
-        .instructions {
-            background-color: rgba(76, 201, 240, 0.1);
-            padding: 16px;
-            border-radius: var(--border-radius);
+        
+        .info-box {
+            background-color: #e8f4ff;
+            padding: 15px;
+            border-radius: 10px;
             margin-top: 20px;
             font-size: 0.9rem;
+            color: #555;
+            border-left: 5px solid #2575fc;
         }
-
-        .instructions h3 {
-            color: var(--primary);
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .instructions ol {
-            padding-left: 20px;
-        }
-
-        .instructions li {
+        
+        .info-box h4 {
+            color: #2575fc;
             margin-bottom: 8px;
         }
-
-        /* Server Status */
-        .server-status {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+        
+        .connected-users {
+            margin-top: 20px;
+        }
+        
+        .user-list {
+            list-style-type: none;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .user-list li {
+            padding: 12px 15px;
+            background-color: white;
+            margin-bottom: 10px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
         }
-
-        .server-status.online {
-            background: rgba(76, 201, 240, 0.8);
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(to right, #2575fc, #6a11cb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
         }
-
-        .server-status.offline {
-            background: rgba(247, 37, 133, 0.8);
+        
+        .user-info h4 {
+            color: #333;
+            font-size: 1rem;
         }
-
-        /* Mobile Responsive Adjustments */
-        @media (max-width: 480px) {
-            .app-header h1 {
-                font-size: 1.3rem;
+        
+        .user-info p {
+            font-size: 0.8rem;
+            color: #777;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .container {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .left-panel {
+                max-width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #eee;
+                max-height: 300px;
+                overflow-y: auto;
+            }
+            
+            .right-panel {
+                flex: 1;
             }
             
             .code-display {
-                font-size: 2rem;
-                letter-spacing: 5px;
+                font-size: 1.5rem;
             }
             
-            .action-buttons {
-                flex-direction: column;
+            .message {
+                max-width: 90%;
             }
-            
-            .input-group {
-                flex-direction: column;
-            }
-            
-            .btn {
-                width: 100%;
-            }
-            
-            .step-label {
-                font-size: 0.7rem;
-            }
-        }
-
-        @media (min-width: 768px) {
-            .app-container {
-                max-width: 500px;
-                margin: 20px auto;
-                min-height: calc(100vh - 40px);
-                border-radius: 24px;
-                overflow: hidden;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            }
-        }
-
-        /* Active States for Mobile */
-        .btn:active, .code-input:active {
-            transform: scale(0.98);
-        }
-
-        /* Hide elements when not needed */
-        .hidden {
-            display: none !important;
-        }
-
-        /* Loading spinner */
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-radius: 50%;
-            border-top-color: var(--primary);
-            animation: spin 1s ease-in-out infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- App Header -->
-        <header class="app-header">
-            <h1><i class="fas fa-comments"></i> Real-Time Chat App</h1>
-            <p>Generate code and connect with Socket.IO</p>
-        </header>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Connection Flow Guide -->
-            <div class="connection-flow">
-                <div class="flow-connector"></div>
-                <div class="flow-step active" id="step1">
-                    <div class="step-circle">1</div>
-                    <div class="step-label">Your Code</div>
-                </div>
-                <div class="flow-step" id="step2">
-                    <div class="step-circle">2</div>
-                    <div class="step-label">Enter Code</div>
-                </div>
-                <div class="flow-step" id="step3">
-                    <div class="step-circle">3</div>
-                    <div class="step-label">Chat</div>
-                </div>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fas fa-comments"></i>
+                <span>CodeChat</span>
             </div>
-
-            <!-- My Code Panel -->
-            <div class="panel my-code-section" id="myCodePanel">
-                <h2 class="panel-title"><i class="fas fa-qrcode"></i> Your Unique Code</h2>
-                <p>Share this code with the other person</p>
+            <div class="status">
+                <div class="status-dot" id="connectionStatus"></div>
+                <span id="statusText">Connecting...</span>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <div class="left-panel">
+                <h2 class="panel-title">Connection Panel</h2>
                 
-                <div class="code-display" id="myCodeDisplay">-----</div>
-                
-                <div class="action-buttons">
-                    <button class="btn btn-primary" id="generateCodeBtn">
+                <div class="code-section">
+                    <h3>Your Connection Code</h3>
+                    <div class="code-display" id="myCode">-----</div>
+                    <button class="btn" id="generateCodeBtn">
                         <i class="fas fa-sync-alt"></i> Generate New Code
                     </button>
-                    <button class="btn btn-secondary" id="copyCodeBtn">
-                        <i class="far fa-copy"></i> Copy Code
+                    <p style="text-align: center; margin-top: 10px; font-size: 0.9rem; color: #777;">
+                        Share this code with someone to connect
+                    </p>
+                </div>
+                
+                <div class="input-group">
+                    <label for="friendCode"><i class="fas fa-user-plus"></i> Enter Friend's Code</label>
+                    <input type="text" id="friendCode" placeholder="Enter 6-digit code">
+                    <button class="btn btn-secondary" id="connectBtn">
+                        <i class="fas fa-link"></i> Connect to Chat
                     </button>
                 </div>
                 
-                <div class="action-buttons">
-                    <button class="btn btn-success" id="nextToEnterCodeBtn">
-                        Next Step <i class="fas fa-arrow-right"></i>
-                    </button>
+                <div class="connected-users">
+                    <h3 class="panel-title">Active Users</h3>
+                    <ul class="user-list" id="userList">
+                        <li>
+                            <div class="user-avatar">Y</div>
+                            <div class="user-info">
+                                <h4>You</h4>
+                                <p>Online - Code: <span id="myCodeShort">-----</span></p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="info-box">
+                    <h4>How to use:</h4>
+                    <ol style="padding-left: 20px;">
+                        <li>Generate your unique code</li>
+                        <li>Share it with a friend</li>
+                        <li>Or enter your friend's code</li>
+                        <li>Start chatting in real-time!</li>
+                    </ol>
                 </div>
             </div>
-
-            <!-- Enter Other's Code Panel -->
-            <div class="panel enter-code-section hidden" id="enterCodePanel">
-                <h2 class="panel-title"><i class="fas fa-keyboard"></i> Enter Other's Code</h2>
-                <p>Enter the code of the person you want to chat with</p>
-                
-                <div class="enter-code-form">
-                    <div class="input-group">
-                        <input type="text" class="code-input" id="otherCodeInput" 
-                               placeholder="XXXXXX" maxlength="6" autocomplete="off">
+            
+            <div class="right-panel">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <h2 class="panel-title">Chat Room</h2>
+                        <div class="chat-partner" id="chatPartner">
+                            Not connected to anyone
+                        </div>
                     </div>
                     
-                    <div class="action-buttons">
-                        <button class="btn btn-primary" id="connectBtn">
-                            <i class="fas fa-link"></i> Connect
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message message-received">
+                            <div class="message-sender">System</div>
+                            <div>Welcome to CodeChat! Generate a code or enter a friend's code to start chatting.</div>
+                            <div class="message-time">Just now</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <input type="text" class="chat-input" id="messageInput" placeholder="Type your message here..." disabled>
+                        <button class="send-btn" id="sendBtn" disabled>
+                            <i class="fas fa-paper-plane"></i>
                         </button>
-                        <button class="btn btn-secondary" id="backToMyCodeBtn">
-                            <i class="fas fa-arrow-left"></i> Go Back
-                        </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Connection Status Panel -->
-            <div class="panel status-section hidden" id="statusPanel">
-                <h2 class="panel-title"><i class="fas fa-plug"></i> Connection Status</h2>
-                
-                <div class="status-indicator">
-                    <div class="status-dot" id="statusDot"></div>
-                    <span id="statusText">Disconnected</span>
-                </div>
-                
-                <div id="connectionInfo" class="connection-info hidden">
-                    <p><strong>Connected with:</strong> <span id="connectedUserName">---</span></p>
-                    <p><strong>Code:</strong> <span id="connectedUserCode">---</span></p>
-                </div>
-                
-                <div class="action-buttons">
-                    <button class="btn btn-danger" id="disconnectBtn">
-                        <i class="fas fa-unlink"></i> Disconnect
-                    </button>
-                    <button class="btn btn-success" id="startChatBtn" class="hidden">
-                        <i class="fas fa-comments"></i> Start Chat
-                    </button>
-                </div>
-            </div>
-
-            <!-- Chat Panel -->
-            <div class="chat-section hidden" id="chatPanel">
-                <div class="chat-header">
-                    <div>
-                        <h3 id="chatWithUserName">---</h3>
-                        <p id="chatStatus">Online</p>
-                    </div>
-                    <button class="btn btn-secondary" id="endChatBtn">
-                        <i class="fas fa-phone-slash"></i> End Chat
-                    </button>
-                </div>
-                
-                <div class="chat-container" id="chatContainer">
-                    <!-- Messages will appear here -->
-                    <div class="system-message" id="initialChatMessage">
-                        Chat started! You can now send messages.
-                    </div>
-                </div>
-                
-                <div class="chat-input-container">
-                    <input type="text" class="chat-input" id="chatInput" 
-                           placeholder="Type your message..." autocomplete="off">
-                    <button class="send-btn" id="sendMessageBtn">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Instructions -->
-            <div class="instructions">
-                <h3><i class="fas fa-info-circle"></i> How to Use</h3>
-                <ol>
-                    <li><strong>Step 1:</strong> Generate your code and send it to the other person</li>
-                    <li><strong>Step 2:</strong> Enter the other person's code to connect</li>
-                    <li><strong>Step 3:</strong> Start chatting after connection</li>
-                </ol>
-                <p><strong>Note:</strong> This app uses Socket.IO for real-time communication. Both users need to be online.</p>
-            </div>
-        </main>
+        </div>
     </div>
 
-    <!-- Server Status Indicator -->
-    <div class="server-status" id="serverStatus">
-        <i class="fas fa-circle"></i> Connecting...
-    </div>
-
-    <!-- Backend Server Simulation -->
     <script>
-        // ============================================
-        // BACKEND SERVER SIMULATION (Socket.IO Logic)
-        // ============================================
-        
-        // This simulates the server-side logic
-        class ChatServer {
-            constructor() {
-                this.activeConnections = new Map(); // code -> {socketId, userName, partnerSocketId}
-                this.socketToCode = new Map(); // socketId -> code
-                this.userNames = new Map(); // socketId -> userName
-                this.partners = new Map(); // socketId -> partnerSocketId
-                
-                // In a real app, this would be on a separate server
-                console.log('Chat server initialized (simulated)');
-            }
-            
-            // Generate unique code
-            generateUniqueCode() {
-                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-                let code;
-                do {
-                    code = '';
-                    for (let i = 0; i < 6; i++) {
-                        code += chars.charAt(Math.floor(Math.random() * chars.length));
-                    }
-                } while (this.activeConnections.has(code));
-                return code;
-            }
-            
-            // Register new user with generated code
-            registerUser(socketId, userName) {
-                const code = this.generateUniqueCode();
-                this.activeConnections.set(code, {
-                    socketId: socketId,
-                    userName: userName,
-                    status: 'waiting',
-                    createdAt: new Date()
-                });
-                this.socketToCode.set(socketId, code);
-                this.userNames.set(socketId, userName);
-                
-                return code;
-            }
-            
-            // Connect two users using code
-            connectUsers(socketId, code, userName) {
-                const targetCode = code.toUpperCase();
-                
-                if (!this.activeConnections.has(targetCode)) {
-                    return { success: false, message: 'Code not found' };
-                }
-                
-                const targetUser = this.activeConnections.get(targetCode);
-                
-                if (targetUser.status === 'connected') {
-                    return { success: false, message: 'User already connected' };
-                }
-                
-                // Pair the users
-                targetUser.partnerSocketId = socketId;
-                targetUser.status = 'connected';
-                
-                // Register the connecting user
-                const currentUser = {
-                    socketId: socketId,
-                    userName: userName,
-                    partnerSocketId: targetUser.socketId,
-                    status: 'connected',
-                    code: targetCode
-                };
-                
-                this.activeConnections.set(socketId, currentUser);
-                this.socketToCode.set(socketId, `paired-${targetCode}`);
-                this.userNames.set(socketId, userName);
-                this.partners.set(socketId, targetUser.socketId);
-                this.partners.set(targetUser.socketId, socketId);
-                
-                return {
-                    success: true,
-                    targetUser: targetUser,
-                    currentUser: currentUser,
-                    code: targetCode
-                };
-            }
-            
-            // Send message from one user to another
-            sendMessage(fromSocketId, message) {
-                const partnerSocketId = this.partners.get(fromSocketId);
-                
-                if (!partnerSocketId) {
-                    return { success: false, message: 'No partner found' };
-                }
-                
-                const fromUserName = this.userNames.get(fromSocketId) || 'Unknown';
-                
-                return {
-                    success: true,
-                    fromSocketId: fromSocketId,
-                    fromUserName: fromUserName,
-                    toSocketId: partnerSocketId,
-                    message: message,
-                    timestamp: new Date().toISOString()
-                };
-            }
-            
-            // Remove user from active connections
-            disconnectUser(socketId) {
-                const code = this.socketToCode.get(socketId);
-                const partnerSocketId = this.partners.get(socketId);
-                
-                // Clean up all references
-                if (code) {
-                    this.activeConnections.delete(code);
-                }
-                
-                this.activeConnections.delete(socketId);
-                this.socketToCode.delete(socketId);
-                this.userNames.delete(socketId);
-                
-                if (partnerSocketId) {
-                    this.partners.delete(socketId);
-                    this.partners.delete(partnerSocketId);
-                    
-                    // Update partner's status
-                    const partnerData = this.activeConnections.get(partnerSocketId);
-                    if (partnerData) {
-                        partnerData.status = 'waiting';
-                        delete partnerData.partnerSocketId;
-                    }
-                    
-                    return partnerSocketId;
-                }
-                
-                return null;
-            }
-            
-            // Get user info
-            getUserInfo(socketId) {
-                return {
-                    userName: this.userNames.get(socketId),
-                    code: this.socketToCode.get(socketId),
-                    partner: this.partners.get(socketId)
-                };
-            }
-        }
-
-        // Initialize the server
-        const chatServer = new ChatServer();
-        
-        // ============================================
-        // FRONTEND APPLICATION
-        // ============================================
-        
-        // App State
-        const appState = {
-            myCode: '',
-            otherCode: '',
+        // Socket.io connection - Replace with your server URL
+        // For demo, we'll use a simulated WebSocket connection
+        const socket = {
             connected: false,
-            connectedUserName: '',
-            connectedUserCode: '',
-            chatActive: false,
-            myName: `User${Math.floor(Math.random() * 9000) + 1000}`,
-            partnerName: '',
-            messages: [],
-            socketId: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            partnerSocketId: null
+            emit: function(event, data) {
+                console.log(`Emitting ${event}:`, data);
+                // Simulate server response
+                if (event === 'generate_code') {
+                    setTimeout(() => {
+                        const code = generateRandomCode();
+                        handleGeneratedCode(code);
+                    }, 500);
+                } else if (event === 'connect_to_code') {
+                    setTimeout(() => {
+                        if (data.code && data.code.length === 6) {
+                            handleConnectionSuccess(data.code);
+                        } else {
+                            handleConnectionError('Invalid code format');
+                        }
+                    }, 500);
+                } else if (event === 'send_message') {
+                    setTimeout(() => {
+                        // Simulate message delivery and echo
+                        const messageData = {
+                            sender: 'Friend',
+                            message: data.message,
+                            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                        };
+                        
+                        // In real app, this would come from server
+                        if (currentConnection) {
+                            displayMessage(messageData, 'received');
+                        }
+                    }, 300);
+                }
+            },
+            on: function(event, callback) {
+                console.log(`Listening for ${event}`);
+                // Store callbacks for simulated events
+                if (!this.callbacks) this.callbacks = {};
+                this.callbacks[event] = callback;
+            },
+            connect: function() {
+                setTimeout(() => {
+                    this.connected = true;
+                    updateConnectionStatus(true);
+                    if (this.callbacks && this.callbacks.connect) {
+                        this.callbacks.connect();
+                    }
+                }, 1000);
+            }
         };
 
-        // DOM Elements
-        const myCodeDisplay = document.getElementById('myCodeDisplay');
+        // App state
+        let myCode = '';
+        let currentConnection = '';
+        let myName = 'User' + Math.floor(Math.random() * 1000);
+        let connectedUsers = [];
+
+        // DOM elements
+        const myCodeElement = document.getElementById('myCode');
+        const myCodeShortElement = document.getElementById('myCodeShort');
         const generateCodeBtn = document.getElementById('generateCodeBtn');
-        const copyCodeBtn = document.getElementById('copyCodeBtn');
-        const nextToEnterCodeBtn = document.getElementById('nextToEnterCodeBtn');
-        const otherCodeInput = document.getElementById('otherCodeInput');
+        const friendCodeInput = document.getElementById('friendCode');
         const connectBtn = document.getElementById('connectBtn');
-        const backToMyCodeBtn = document.getElementById('backToMyCodeBtn');
-        const statusDot = document.getElementById('statusDot');
-        const statusText = document.getElementById('statusText');
-        const connectionInfo = document.getElementById('connectionInfo');
-        const connectedUserName = document.getElementById('connectedUserName');
-        const connectedUserCode = document.getElementById('connectedUserCode');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const startChatBtn = document.getElementById('startChatBtn');
-        const chatPanel = document.getElementById('chatPanel');
-        const chatWithUserName = document.getElementById('chatWithUserName');
-        const chatStatus = document.getElementById('chatStatus');
-        const endChatBtn = document.getElementById('endChatBtn');
-        const chatContainer = document.getElementById('chatContainer');
-        const chatInput = document.getElementById('chatInput');
-        const sendMessageBtn = document.getElementById('sendMessageBtn');
-        const initialChatMessage = document.getElementById('initialChatMessage');
-        const serverStatus = document.getElementById('serverStatus');
-        
-        // Panels
-        const myCodePanel = document.getElementById('myCodePanel');
-        const enterCodePanel = document.getElementById('enterCodePanel');
-        const statusPanel = document.getElementById('statusPanel');
-        
-        // Flow Steps
-        const step1 = document.getElementById('step1');
-        const step2 = document.getElementById('step2');
-        const step3 = document.getElementById('step3');
+        const chatPartnerElement = document.getElementById('chatPartner');
+        const chatMessagesElement = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const connectionStatusElement = document.getElementById('connectionStatus');
+        const statusTextElement = document.getElementById('statusText');
+        const userListElement = document.getElementById('userList');
 
-        // Update server status indicator
-        function updateServerStatus(connected) {
-            if (connected) {
-                serverStatus.className = 'server-status online';
-                serverStatus.innerHTML = '<i class="fas fa-circle"></i> Server: Online';
-            } else {
-                serverStatus.className = 'server-status offline';
-                serverStatus.innerHTML = '<i class="fas fa-circle"></i> Server: Offline';
-            }
-        }
-
-        // Initialize with a generated code
-        function initApp() {
-            // Set server as online
-            updateServerStatus(true);
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Connect to socket (simulated)
+            socket.connect();
             
             // Generate initial code
-            generateNewCode();
+            generateCode();
             
-            // Update flow step
-            updateFlowStep(1);
-            
-            // Set up event listeners
-            setupEventListeners();
-            
-            console.log('App initialized with socket ID:', appState.socketId);
-        }
-
-        // Generate new code
-        function generateNewCode() {
-            appState.myCode = chatServer.generateUniqueCode();
-            myCodeDisplay.textContent = appState.myCode;
-            
-            // Register user with server
-            chatServer.registerUser(appState.socketId, appState.myName);
-            
-            console.log('Generated code:', appState.myCode);
-        }
-
-        // Update connection flow visualization
-        function updateFlowStep(step) {
-            // Reset all steps
-            step1.classList.remove('completed', 'active');
-            step2.classList.remove('completed', 'active');
-            step3.classList.remove('completed', 'active');
-            
-            // Update based on current step
-            if (step === 1) {
-                step1.classList.add('active');
-            } else if (step === 2) {
-                step1.classList.add('completed');
-                step2.classList.add('active');
-            } else if (step === 3) {
-                step1.classList.add('completed');
-                step2.classList.add('completed');
-                step3.classList.add('active');
-            }
-        }
-
-        // Update connection status
-        function updateConnectionStatus(connected, message = '') {
-            appState.connected = connected;
-            
-            if (connected) {
-                statusDot.classList.add('connected');
-                statusText.textContent = 'Connected';
-                connectionInfo.classList.remove('hidden');
-                startChatBtn.classList.remove('hidden');
-                
-                if (message) {
-                    showSystemMessage(message);
-                }
-            } else {
-                statusDot.classList.remove('connected');
-                statusText.textContent = 'Disconnected';
-                connectionInfo.classList.add('hidden');
-                startChatBtn.classList.add('hidden');
-                
-                if (message) {
-                    showSystemMessage(message);
-                }
-            }
-        }
-
-        // Show system message
-        function showSystemMessage(message) {
-            const systemMsg = document.createElement('div');
-            systemMsg.className = 'system-message';
-            systemMsg.textContent = message;
-            chatContainer.appendChild(systemMsg);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        // Add message to chat
-        function addMessageToChat(text, sender, isSent = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
-            
-            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            messageDiv.innerHTML = `
-                <div class="message-sender">${sender}</div>
-                <div class="message-content">${text}</div>
-                <div class="message-time">${time}</div>
-            `;
-            
-            chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-            
-            // Store message
-            appState.messages.push({
-                text,
-                sender,
-                time,
-                isSent
-            });
-        }
-
-        // Simulate receiving a message (for demo)
-        function simulateIncomingMessage() {
-            if (!appState.chatActive || !appState.partnerSocketId) return;
-            
-            // Only simulate if we haven't received a message in the last 10 seconds
-            const lastMessageTime = appState.messages
-                .filter(m => !m.isSent)
-                .sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-                
-            if (lastMessageTime && (Date.now() - new Date(lastMessageTime.time).getTime()) < 10000) {
-                return;
-            }
-            
-            setTimeout(() => {
-                if (!appState.chatActive) return;
-                
-                const responses = [
-                    "Hi there! How are you?",
-                    "That's interesting! Tell me more.",
-                    "I agree with you on that point.",
-                    "What do you think about this weather?",
-                    "Thanks for chatting with me!",
-                    "Have you used this app before?",
-                    "This real-time chat is working well!",
-                    "What are your plans for today?"
-                ];
-                
-                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-                
-                // Simulate message from partner
-                const messageData = {
-                    fromSocketId: appState.partnerSocketId,
-                    fromUserName: appState.partnerName,
-                    message: randomResponse,
-                    timestamp: new Date().toISOString()
-                };
-                
-                // Add to chat
-                addMessageToChat(messageData.message, appState.partnerName, false);
-            }, 3000 + Math.random() * 7000);
-        }
-
-        // Send a message
-        function sendMessage() {
-            const messageText = chatInput.value.trim();
-            
-            if (!messageText || !appState.chatActive) {
-                return;
-            }
-            
-            // Add my message to chat
-            addMessageToChat(messageText, 'You', true);
-            
-            // Clear input
-            chatInput.value = '';
-            
-            // Send to server (simulated)
-            const result = chatServer.sendMessage(appState.socketId, messageText);
-            
-            if (result.success) {
-                console.log('Message sent:', messageText);
-                
-                // Start simulation for incoming response
-                simulateIncomingMessage();
-            }
-        }
-
-        // Connect to another user's code
-        function connectToCode() {
-            const code = otherCodeInput.value.trim().toUpperCase();
-            
-            if (!code || code.length !== 6) {
-                alert('Please enter a 6-character code');
-                return;
-            }
-            
-            appState.otherCode = code;
-            
-            // Show connecting status
-            updateConnectionStatus(false, 'Connecting...');
-            
-            // Simulate connection process
-            setTimeout(() => {
-                // Connect with server
-                const result = chatServer.connectUsers(
-                    appState.socketId, 
-                    code, 
-                    appState.myName
-                );
-                
-                if (result.success) {
-                    // Successfully connected
-                    appState.partnerName = result.targetUser.userName;
-                    appState.partnerSocketId = result.targetUser.socketId;
-                    appState.connectedUserCode = result.code;
-                    
-                    updateConnectionStatus(true, 'Connection successful!');
-                    
-                    // Update UI
-                    connectedUserName.textContent = appState.partnerName;
-                    connectedUserCode.textContent = result.code;
-                    
-                    // Move to status panel
-                    enterCodePanel.classList.add('hidden');
-                    statusPanel.classList.remove('hidden');
-                    updateFlowStep(3);
-                    
-                    // Show success message
-                    showSystemMessage(`You are now connected with ${appState.partnerName}!`);
-                    
-                    console.log('Connected with:', appState.partnerName);
-                } else {
-                    // Connection failed
-                    alert(result.message);
-                    updateConnectionStatus(false, 'Connection failed');
-                }
-            }, 1000);
-        }
-
-        // Start chat
-        function startChat() {
-            appState.chatActive = true;
-            
-            // Update UI
-            statusPanel.classList.add('hidden');
-            chatPanel.classList.remove('hidden');
-            
-            // Set chat partner name
-            chatWithUserName.textContent = appState.partnerName;
-            chatStatus.textContent = 'Online';
-            
-            // Show initial message
-            initialChatMessage.classList.remove('hidden');
-            
-            // Focus on chat input
-            setTimeout(() => {
-                chatInput.focus();
-            }, 300);
-            
-            // Start simulating incoming messages
-            simulateIncomingMessage();
-        }
-
-        // End chat and disconnect
-        function endChat() {
-            appState.chatActive = false;
-            appState.connected = false;
-            
-            // Disconnect from server
-            const partnerSocketId = chatServer.disconnectUser(appState.socketId);
-            
-            // Reset UI
-            chatPanel.classList.add('hidden');
-            myCodePanel.classList.remove('hidden');
-            
-            // Clear chat
-            chatContainer.innerHTML = '<div class="system-message" id="initialChatMessage">Chat started! You can now send messages.</div>';
-            initialChatMessage.id = 'initialChatMessage';
-            
-            // Reset app state
-            appState.messages = [];
-            appState.otherCode = '';
-            appState.partnerName = '';
-            appState.partnerSocketId = null;
-            otherCodeInput.value = '';
-            
-            // Generate new code
-            generateNewCode();
-            
-            // Update flow
-            updateFlowStep(1);
-            updateConnectionStatus(false, 'Disconnected');
-        }
-
-        // Setup all event listeners
-        function setupEventListeners() {
-            // Generate new code
-            generateCodeBtn.addEventListener('click', () => {
-                generateNewCode();
-                
-                // Show feedback
-                const originalText = generateCodeBtn.innerHTML;
-                generateCodeBtn.innerHTML = '<i class="fas fa-check"></i> Code Generated';
-                generateCodeBtn.classList.add('btn-success');
-                
-                setTimeout(() => {
-                    generateCodeBtn.innerHTML = originalText;
-                    generateCodeBtn.classList.remove('btn-success');
-                }, 1500);
-            });
-            
-            // Copy code to clipboard
-            copyCodeBtn.addEventListener('click', () => {
-                navigator.clipboard.writeText(appState.myCode).then(() => {
-                    // Show success feedback
-                    const originalText = copyCodeBtn.innerHTML;
-                    copyCodeBtn.innerHTML = '<i class="fas fa-check"></i> Code Copied';
-                    copyCodeBtn.classList.add('btn-success');
-                    
-                    setTimeout(() => {
-                        copyCodeBtn.innerHTML = originalText;
-                        copyCodeBtn.classList.remove('btn-success');
-                    }, 2000);
-                });
-            });
-            
-            // Move to enter code panel
-            nextToEnterCodeBtn.addEventListener('click', () => {
-                myCodePanel.classList.add('hidden');
-                enterCodePanel.classList.remove('hidden');
-                updateFlowStep(2);
-                otherCodeInput.focus();
-            });
-            
-            // Connect to other user's code
+            // Setup event listeners
+            generateCodeBtn.addEventListener('click', generateCode);
             connectBtn.addEventListener('click', connectToCode);
-            
-            // Enter key to connect
-            otherCodeInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    connectToCode();
-                }
-            });
-            
-            // Auto-uppercase and limit code input
-            otherCodeInput.addEventListener('input', function() {
-                this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                if (this.value.length > 6) {
-                    this.value = this.value.substring(0, 6);
-                }
-            });
-            
-            // Back to my code panel
-            backToMyCodeBtn.addEventListener('click', () => {
-                enterCodePanel.classList.add('hidden');
-                myCodePanel.classList.remove('hidden');
-                updateFlowStep(1);
-            });
-            
-            // Disconnect
-            disconnectBtn.addEventListener('click', () => {
-                appState.connected = false;
-                statusPanel.classList.add('hidden');
-                myCodePanel.classList.remove('hidden');
-                updateFlowStep(1);
-                updateConnectionStatus(false, 'Disconnected');
-                
-                // Disconnect from server
-                chatServer.disconnectUser(appState.socketId);
-            });
-            
-            // Start chat
-            startChatBtn.addEventListener('click', startChat);
-            
-            // End chat
-            endChatBtn.addEventListener('click', endChat);
-            
-            // Send message on button click
-            sendMessageBtn.addEventListener('click', sendMessage);
-            
-            // Send message on Enter key
-            chatInput.addEventListener('keypress', (e) => {
+            messageInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     sendMessage();
                 }
             });
+            sendBtn.addEventListener('click', sendMessage);
             
-            // Mobile-specific optimizations
-            document.addEventListener('touchstart', function() {}, {passive: true});
+            // Update user list with your info
+            updateUserList();
+        });
+
+        // Generate random 6-digit code
+        function generateRandomCode() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        // Generate new code
+        function generateCode() {
+            socket.emit('generate_code', {userId: myName});
+        }
+
+        // Handle generated code from server
+        function handleGeneratedCode(code) {
+            myCode = code;
+            myCodeElement.textContent = code;
+            myCodeShortElement.textContent = code;
             
-            // Prevent zoom on input focus for mobile
-            chatInput.addEventListener('focus', function() {
-                setTimeout(() => {
-                    this.scrollIntoView({behavior: 'smooth', block: 'center'});
-                }, 300);
+            // Show notification
+            displaySystemMessage(`Your new code is: ${code}. Share it with a friend to connect.`);
+            
+            // Update user list
+            updateUserList();
+        }
+
+        // Connect to a friend's code
+        function connectToCode() {
+            const code = friendCodeInput.value.trim().toUpperCase();
+            
+            if (!code || code.length !== 6) {
+                displaySystemMessage('Please enter a valid 6-digit code.');
+                return;
+            }
+            
+            if (code === myCode) {
+                displaySystemMessage('You cannot connect to your own code.');
+                return;
+            }
+            
+            displaySystemMessage(`Connecting to code: ${code}...`);
+            
+            socket.emit('connect_to_code', {
+                myCode: myCode,
+                code: code,
+                userName: myName
             });
         }
 
-        // Initialize the app when page loads
-        window.addEventListener('DOMContentLoaded', initApp);
-        
-        // Prevent accidental refresh
-        window.addEventListener('beforeunload', (e) => {
-            if (appState.chatActive) {
-                e.preventDefault();
-                e.returnValue = 'You are leaving the chat. Are you sure you want to leave?';
-                return e.returnValue;
+        // Handle successful connection
+        function handleConnectionSuccess(code) {
+            currentConnection = code;
+            chatPartnerElement.textContent = `Connected to: ${code}`;
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            messageInput.focus();
+            
+            displaySystemMessage(`Successfully connected to ${code}! You can now start chatting.`);
+            
+            // Add to connected users (simulated)
+            if (!connectedUsers.includes(code)) {
+                connectedUsers.push(code);
+                updateUserList();
             }
-        });
+        }
+
+        // Handle connection error
+        function handleConnectionError(error) {
+            displaySystemMessage(`Connection failed: ${error}`);
+            currentConnection = '';
+            chatPartnerElement.textContent = 'Not connected to anyone';
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+        }
+
+        // Send message
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || !currentConnection) return;
+            
+            const messageData = {
+                sender: myName,
+                message: message,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            };
+            
+            // Display my message immediately
+            displayMessage(messageData, 'sent');
+            
+            // Send to server
+            socket.emit('send_message', {
+                to: currentConnection,
+                message: message,
+                fromCode: myCode
+            });
+            
+            // Clear input
+            messageInput.value = '';
+        }
+
+        // Display a message in chat
+        function displayMessage(data, type) {
+            const messageElement = document.createElement('div');
+            messageElement.className = `message message-${type}`;
+            
+            const senderElement = document.createElement('div');
+            senderElement.className = 'message-sender';
+            senderElement.textContent = data.sender;
+            
+            const textElement = document.createElement('div');
+            textElement.textContent = data.message;
+            
+            const timeElement = document.createElement('div');
+            timeElement.className = 'message-time';
+            timeElement.textContent = data.time;
+            
+            messageElement.appendChild(senderElement);
+            messageElement.appendChild(textElement);
+            messageElement.appendChild(timeElement);
+            
+            chatMessagesElement.appendChild(messageElement);
+            
+            // Scroll to bottom
+            chatMessagesElement.scrollTop = chatMessagesElement.scrollHeight;
+        }
+
+        // Display system message
+        function displaySystemMessage(text) {
+            const messageData = {
+                sender: 'System',
+                message: text,
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            };
+            
+            displayMessage(messageData, 'received');
+        }
+
+        // Update connection status UI
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionStatusElement.style.backgroundColor = '#4CAF50';
+                statusTextElement.textContent = 'Connected';
+                socket.connected = true;
+            } else {
+                connectionStatusElement.style.backgroundColor = '#f44336';
+                statusTextElement.textContent = 'Disconnected';
+                socket.connected = false;
+            }
+        }
+
+        // Update user list
+        function updateUserList() {
+            // Clear current list except first item (you)
+            while (userListElement.children.length > 1) {
+                userListElement.removeChild(userListElement.lastChild);
+            }
+            
+            // Add connected users
+            connectedUsers.forEach(userCode => {
+                const userItem = document.createElement('li');
+                
+                const avatarElement = document.createElement('div');
+                avatarElement.className = 'user-avatar';
+                avatarElement.textContent = userCode.charAt(0);
+                
+                const userInfoElement = document.createElement('div');
+                userInfoElement.className = 'user-info';
+                
+                const nameElement = document.createElement('h4');
+                nameElement.textContent = `User ${userCode}`;
+                
+                const statusElement = document.createElement('p');
+                statusElement.textContent = `Connected - Code: ${userCode}`;
+                
+                userInfoElement.appendChild(nameElement);
+                userInfoElement.appendChild(statusElement);
+                
+                userItem.appendChild(avatarElement);
+                userItem.appendChild(userInfoElement);
+                
+                userListElement.appendChild(userItem);
+            });
+        }
+
+        // Simulate incoming connections
+        setInterval(() => {
+            if (socket.connected && Math.random() > 0.7 && connectedUsers.length < 3) {
+                const randomCode = generateRandomCode();
+                if (!connectedUsers.includes(randomCode) && randomCode !== myCode) {
+                    connectedUsers.push(randomCode);
+                    updateUserList();
+                    
+                    // Occasionally simulate incoming connection requests
+                    if (Math.random() > 0.5) {
+                        displaySystemMessage(`User with code ${randomCode} wants to connect. Enter their code to chat with them.`);
+                    }
+                }
+            }
+        }, 10000);
     </script>
 </body>
 </html>
