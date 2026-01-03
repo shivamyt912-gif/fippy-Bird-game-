@@ -2,953 +2,1328 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Chat App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Real-Time Chat App with Socket.IO</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
+        /* Mobile First Design */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
-        
+
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --border-radius: 16px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
         body {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--dark);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            max-width: 100%;
             min-height: 100vh;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .container {
-            width: 100%;
-            max-width: 900px;
-            background-color: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-            display: flex;
             flex-direction: column;
-            height: 85vh;
+            background-color: rgba(255, 255, 255, 0.95);
         }
-        
-        header {
-            background: linear-gradient(to right, #2575fc, #6a11cb);
+
+        /* Header */
+        .app-header {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
             color: white;
-            padding: 20px 30px;
+            padding: 20px 16px;
             text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .app-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .app-header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 20px 16px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Connection Flow Guide */
+        .connection-flow {
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.8rem;
-            font-weight: bold;
-        }
-        
-        .logo i {
-            font-size: 2rem;
-        }
-        
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 8px 15px;
-            border-radius: 50px;
-        }
-        
-        .user-info i {
-            font-size: 1.2rem;
-        }
-        
-        .username-display {
-            font-weight: 600;
-        }
-        
-        .change-user {
-            background: white;
-            color: #6a11cb;
-            border: none;
-            border-radius: 20px;
-            padding: 5px 12px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-        
-        .change-user:hover {
-            background: #f0f0f0;
-            transform: scale(1.05);
-        }
-        
-        .main-content {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-        
-        /* Username Selection Screen */
-        .username-screen {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 40px;
-            width: 100%;
-            text-align: center;
-        }
-        
-        .username-screen h2 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 2rem;
-        }
-        
-        .username-screen p {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1.1rem;
-            max-width: 600px;
-        }
-        
-        .username-form {
-            width: 100%;
-            max-width: 500px;
-        }
-        
-        .input-group {
             margin-bottom: 25px;
-            text-align: left;
+            position: relative;
         }
-        
-        .input-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #555;
-            font-weight: 600;
-        }
-        
-        .input-group input {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        
-        .input-group input:focus {
-            border-color: #6a11cb;
-            outline: none;
-        }
-        
-        .recent-users {
-            margin-top: 20px;
-        }
-        
-        .recent-users h3 {
-            color: #555;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-        }
-        
-        .user-options {
+
+        .flow-step {
             display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-        }
-        
-        .user-btn {
-            background: #f0f0f0;
-            border: 2px solid #ddd;
-            border-radius: 50px;
-            padding: 10px 20px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 500;
-        }
-        
-        .user-btn:hover {
-            background: #e0e0ff;
-            border-color: #6a11cb;
-            transform: translateY(-3px);
-        }
-        
-        /* Chat Interface */
-        .chat-screen {
-            display: none;
             flex-direction: column;
-            width: 100%;
-            height: 100%;
-        }
-        
-        .chat-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-        
-        .users-sidebar {
-            width: 250px;
-            background-color: #f8f9fa;
-            border-right: 1px solid #e0e0e0;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        
-        .users-sidebar h3 {
-            color: #555;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 1.2rem;
-        }
-        
-        .user-list {
-            list-style: none;
-        }
-        
-        .user-list li {
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            background-color: white;
-            border-radius: 10px;
-            display: flex;
             align-items: center;
-            gap: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            transition: all 0.3s;
+            flex: 1;
+            position: relative;
+            z-index: 2;
         }
-        
-        .user-list li:hover {
-            background-color: #f0f0ff;
-            transform: translateX(5px);
-        }
-        
-        .user-list li.active {
-            background-color: #e6f0ff;
-            border-left: 4px solid #2575fc;
-        }
-        
-        .user-avatar {
+
+        .step-circle {
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(to right, #6a11cb, #2575fc);
-            color: white;
+            background-color: var(--light-gray);
+            color: var(--gray);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 1.2rem;
+            margin-bottom: 8px;
+            border: 3px solid white;
+            box-shadow: var(--box-shadow);
+            transition: all 0.3s ease;
         }
-        
-        .chat-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
-        
-        .chat-header {
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e0e0e0;
-            margin-bottom: 20px;
-        }
-        
-        .chat-header h3 {
-            color: #333;
-            font-size: 1.5rem;
-        }
-        
-        .chat-header p {
-            color: #666;
-            font-size: 0.9rem;
-        }
-        
-        .messages-container {
-            flex: 1;
-            overflow-y: auto;
-            padding-right: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .message {
-            margin-bottom: 20px;
-            max-width: 80%;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .message.sent {
-            align-self: flex-end;
-            align-items: flex-end;
-        }
-        
-        .message.received {
-            align-self: flex-start;
-            align-items: flex-start;
-        }
-        
-        .message-content {
-            padding: 12px 18px;
-            border-radius: 18px;
-            margin-bottom: 5px;
-            position: relative;
-            word-wrap: break-word;
-            max-width: 100%;
-        }
-        
-        .sent .message-content {
-            background: linear-gradient(to right, #2575fc, #6a11cb);
+
+        .flow-step.active .step-circle {
+            background-color: var(--primary);
             color: white;
-            border-bottom-right-radius: 5px;
         }
-        
-        .received .message-content {
-            background: #f0f0f0;
-            color: #333;
-            border-bottom-left-radius: 5px;
+
+        .flow-step.completed .step-circle {
+            background-color: var(--success);
+            color: white;
         }
-        
-        .message-info {
-            display: flex;
-            justify-content: space-between;
+
+        .step-label {
             font-size: 0.8rem;
-            color: #888;
-            width: 100%;
+            text-align: center;
+            font-weight: 500;
         }
-        
-        .message-sender {
-            font-weight: 600;
+
+        .flow-connector {
+            position: absolute;
+            top: 20px;
+            left: 10%;
+            right: 10%;
+            height: 3px;
+            background-color: var(--light-gray);
+            z-index: 1;
         }
-        
-        .message-time {
-            font-style: italic;
+
+        /* Panels - Mobile friendly */
+        .panel {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--box-shadow);
+            transition: transform 0.3s ease;
         }
-        
-        .message-input-container {
+
+        .panel:hover {
+            transform: translateY(-2px);
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+            color: var(--primary);
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--light-gray);
+        }
+
+        .panel-title i {
+            font-size: 1.3rem;
+        }
+
+        /* My Code Section */
+        .my-code-section {
+            text-align: center;
+        }
+
+        .code-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            letter-spacing: 8px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 15px 0;
+            padding: 15px;
+            border: 3px dashed var(--light-gray);
+            border-radius: var(--border-radius);
+        }
+
+        .action-buttons {
             display: flex;
             gap: 10px;
-            padding-top: 15px;
-            border-top: 1px solid #e0e0e0;
+            margin-top: 20px;
         }
-        
-        .message-input {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #ddd;
-            border-radius: 10px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        
-        .message-input:focus {
-            border-color: #6a11cb;
-            outline: none;
-        }
-        
-        .send-btn {
-            background: linear-gradient(to right, #2575fc, #6a11cb);
-            color: white;
+
+        .btn {
+            padding: 14px 20px;
             border: none;
-            border-radius: 10px;
-            padding: 0 25px;
-            cursor: pointer;
-            font-size: 1rem;
+            border-radius: var(--border-radius);
             font-weight: 600;
-            transition: all 0.3s;
+            font-size: 1rem;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            flex: 1;
+            transition: all 0.2s ease;
         }
-        
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: var(--light-gray);
+            color: var(--dark);
+        }
+
+        .btn-secondary:hover {
+            background-color: #d1d9e6;
+        }
+
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #3ab0d8;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #e11575;
+        }
+
+        /* Enter Code Section */
+        .enter-code-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .code-input {
+            flex: 1;
+            padding: 16px;
+            border: 2px solid var(--light-gray);
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            text-align: center;
+            letter-spacing: 5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: border-color 0.3s;
+        }
+
+        .code-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Status Section */
+        .status-section {
+            text-align: center;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            background-color: var(--light-gray);
+            border-radius: 50px;
+            margin-bottom: 20px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--gray);
+        }
+
+        .status-dot.connected {
+            background-color: var(--success);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .connection-info {
+            background-color: rgba(67, 97, 238, 0.1);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin-top: 15px;
+        }
+
+        /* Chat Section */
+        .chat-section {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            padding: 16px;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background-color: #f5f7fb;
+            border-left: 1px solid var(--light-gray);
+            border-right: 1px solid var(--light-gray);
+            max-height: 50vh;
+            min-height: 300px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            max-width: 85%;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.received {
+            align-self: flex-start;
+        }
+
+        .message.sent {
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message.received .message-content {
+            background-color: white;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .message.sent .message-content {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: var(--gray);
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .message.received .message-time {
+            text-align: left;
+        }
+
+        .message-sender {
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: var(--primary);
+        }
+
+        .message.sent .message-sender {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .chat-input-container {
+            padding: 16px;
+            background-color: white;
+            border-top: 1px solid var(--light-gray);
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid var(--light-gray);
+            border-radius: 50px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
         .send-btn:hover {
             transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(37, 117, 252, 0.3);
         }
-        
-        .notification {
+
+        .send-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* System Messages */
+        .system-message {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        /* Instructions */
+        .instructions {
+            background-color: rgba(76, 201, 240, 0.1);
+            padding: 16px;
+            border-radius: var(--border-radius);
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        .instructions h3 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .instructions ol {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        /* Server Status */
+        .server-status {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #4CAF50;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 100;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        
-        .online-status {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
+
+        .server-status.online {
+            background: rgba(76, 201, 240, 0.8);
         }
-        
-        .online {
-            background-color: #4CAF50;
+
+        .server-status.offline {
+            background: rgba(247, 37, 133, 0.8);
         }
-        
-        @media (max-width: 768px) {
-            .container {
-                height: 95vh;
-                border-radius: 15px;
+
+        /* Mobile Responsive Adjustments */
+        @media (max-width: 480px) {
+            .app-header h1 {
+                font-size: 1.3rem;
             }
             
-            .users-sidebar {
-                display: none;
+            .code-display {
+                font-size: 2rem;
+                letter-spacing: 5px;
             }
             
-            .main-content {
+            .action-buttons {
                 flex-direction: column;
             }
             
-            .message {
-                max-width: 90%;
+            .input-group {
+                flex-direction: column;
             }
             
-            header {
-                padding: 15px;
+            .btn {
+                width: 100%;
             }
             
-            .logo span {
-                font-size: 1.5rem;
+            .step-label {
+                font-size: 0.7rem;
             }
         }
-        
-        .btn {
-            background: linear-gradient(to right, #2575fc, #6a11cb);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 15px 30px;
-            cursor: pointer;
-            font-size: 1.1rem;
-            font-weight: 600;
-            transition: all 0.3s;
-            display: inline-block;
-            text-align: center;
+
+        @media (min-width: 768px) {
+            .app-container {
+                max-width: 500px;
+                margin: 20px auto;
+                min-height: calc(100vh - 40px);
+                border-radius: 24px;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
         }
-        
-        .btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(37, 117, 252, 0.3);
+
+        /* Active States for Mobile */
+        .btn:active, .code-input:active {
+            transform: scale(0.98);
         }
-        
-        .btn i {
-            margin-right: 8px;
+
+        /* Hide elements when not needed */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo">
-                <i class="fas fa-comments"></i>
-                <span>RealTime Chat</span>
-            </div>
-            <div class="user-info">
-                <i class="fas fa-user-circle"></i>
-                <span class="username-display">Guest</span>
-                <button class="change-user" id="changeUserBtn">
-                    <i class="fas fa-exchange-alt"></i> Change User
-                </button>
-            </div>
+    <div class="app-container">
+        <!-- App Header -->
+        <header class="app-header">
+            <h1><i class="fas fa-comments"></i> Real-Time Chat App</h1>
+            <p>Generate code and connect with Socket.IO</p>
         </header>
-        
-        <div class="main-content">
-            <!-- Username selection screen -->
-            <div class="username-screen" id="usernameScreen">
-                <h2>Welcome to RealTime Chat</h2>
-                <p>Select a username to start chatting with others in real-time. Your messages will be visible to everyone in the chat.</p>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Connection Flow Guide -->
+            <div class="connection-flow">
+                <div class="flow-connector"></div>
+                <div class="flow-step active" id="step1">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Your Code</div>
+                </div>
+                <div class="flow-step" id="step2">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">Enter Code</div>
+                </div>
+                <div class="flow-step" id="step3">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Chat</div>
+                </div>
+            </div>
+
+            <!-- My Code Panel -->
+            <div class="panel my-code-section" id="myCodePanel">
+                <h2 class="panel-title"><i class="fas fa-qrcode"></i> Your Unique Code</h2>
+                <p>Share this code with the other person</p>
                 
-                <div class="username-form">
-                    <div class="input-group">
-                        <label for="usernameInput"><i class="fas fa-user"></i> Choose Your Username</label>
-                        <input type="text" id="usernameInput" placeholder="Enter your username..." maxlength="20">
-                    </div>
-                    
-                    <button class="btn" id="startChatBtn">
-                        <i class="fas fa-paper-plane"></i> Start Chatting
+                <div class="code-display" id="myCodeDisplay">-----</div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="generateCodeBtn">
+                        <i class="fas fa-sync-alt"></i> Generate New Code
                     </button>
+                    <button class="btn btn-secondary" id="copyCodeBtn">
+                        <i class="far fa-copy"></i> Copy Code
+                    </button>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-success" id="nextToEnterCodeBtn">
+                        Next Step <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Enter Other's Code Panel -->
+            <div class="panel enter-code-section hidden" id="enterCodePanel">
+                <h2 class="panel-title"><i class="fas fa-keyboard"></i> Enter Other's Code</h2>
+                <p>Enter the code of the person you want to chat with</p>
+                
+                <div class="enter-code-form">
+                    <div class="input-group">
+                        <input type="text" class="code-input" id="otherCodeInput" 
+                               placeholder="XXXXXX" maxlength="6" autocomplete="off">
+                    </div>
                     
-                    <div class="recent-users">
-                        <h3>Recent Users</h3>
-                        <div class="user-options" id="recentUsers">
-                            <!-- Recent users will be loaded here -->
-                        </div>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" id="connectBtn">
+                            <i class="fas fa-link"></i> Connect
+                        </button>
+                        <button class="btn btn-secondary" id="backToMyCodeBtn">
+                            <i class="fas fa-arrow-left"></i> Go Back
+                        </button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Chat interface -->
-            <div class="chat-screen" id="chatScreen">
-                <div class="chat-container">
-                    <div class="users-sidebar">
-                        <h3><i class="fas fa-users"></i> Online Users</h3>
-                        <ul class="user-list" id="onlineUsers">
-                            <!-- Online users will be loaded here -->
-                        </ul>
-                    </div>
-                    
-                    <div class="chat-area">
-                        <div class="chat-header">
-                            <h3><i class="fas fa-globe"></i> Global Chat</h3>
-                            <p>Chat with everyone in real-time. Messages are visible to all users.</p>
-                        </div>
-                        
-                        <div class="messages-container" id="messagesContainer">
-                            <!-- Messages will be loaded here -->
-                            <div class="welcome-message">
-                                <div class="message received">
-                                    <div class="message-content">
-                                        Welcome to the chat! Start sending messages to communicate with others.
-                                    </div>
-                                    <div class="message-info">
-                                        <span class="message-sender">System</span>
-                                        <span class="message-time">Just now</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="message-input-container">
-                            <input type="text" class="message-input" id="messageInput" placeholder="Type your message here...">
-                            <button class="send-btn" id="sendBtn">
-                                <i class="fas fa-paper-plane"></i> Send
-                            </button>
-                        </div>
-                    </div>
+
+            <!-- Connection Status Panel -->
+            <div class="panel status-section hidden" id="statusPanel">
+                <h2 class="panel-title"><i class="fas fa-plug"></i> Connection Status</h2>
+                
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Disconnected</span>
+                </div>
+                
+                <div id="connectionInfo" class="connection-info hidden">
+                    <p><strong>Connected with:</strong> <span id="connectedUserName">---</span></p>
+                    <p><strong>Code:</strong> <span id="connectedUserCode">---</span></p>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-danger" id="disconnectBtn">
+                        <i class="fas fa-unlink"></i> Disconnect
+                    </button>
+                    <button class="btn btn-success" id="startChatBtn" class="hidden">
+                        <i class="fas fa-comments"></i> Start Chat
+                    </button>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <div class="notification" id="notification">
-        <i class="fas fa-bell"></i> <span id="notificationText">Notification message</span>
+
+            <!-- Chat Panel -->
+            <div class="chat-section hidden" id="chatPanel">
+                <div class="chat-header">
+                    <div>
+                        <h3 id="chatWithUserName">---</h3>
+                        <p id="chatStatus">Online</p>
+                    </div>
+                    <button class="btn btn-secondary" id="endChatBtn">
+                        <i class="fas fa-phone-slash"></i> End Chat
+                    </button>
+                </div>
+                
+                <div class="chat-container" id="chatContainer">
+                    <!-- Messages will appear here -->
+                    <div class="system-message" id="initialChatMessage">
+                        Chat started! You can now send messages.
+                    </div>
+                </div>
+                
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="chatInput" 
+                           placeholder="Type your message..." autocomplete="off">
+                    <button class="send-btn" id="sendMessageBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="instructions">
+                <h3><i class="fas fa-info-circle"></i> How to Use</h3>
+                <ol>
+                    <li><strong>Step 1:</strong> Generate your code and send it to the other person</li>
+                    <li><strong>Step 2:</strong> Enter the other person's code to connect</li>
+                    <li><strong>Step 3:</strong> Start chatting after connection</li>
+                </ol>
+                <p><strong>Note:</strong> This app uses Socket.IO for real-time communication. Both users need to be online.</p>
+            </div>
+        </main>
     </div>
 
+    <!-- Server Status Indicator -->
+    <div class="server-status" id="serverStatus">
+        <i class="fas fa-circle"></i> Connecting...
+    </div>
+
+    <!-- Backend Server Simulation -->
     <script>
-        // DOM Elements
-        const usernameScreen = document.getElementById('usernameScreen');
-        const chatScreen = document.getElementById('chatScreen');
-        const usernameInput = document.getElementById('usernameInput');
-        const startChatBtn = document.getElementById('startChatBtn');
-        const changeUserBtn = document.getElementById('changeUserBtn');
-        const usernameDisplay = document.querySelector('.username-display');
-        const recentUsersContainer = document.getElementById('recentUsers');
-        const onlineUsersContainer = document.getElementById('onlineUsers');
-        const messagesContainer = document.getElementById('messagesContainer');
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-        const notification = document.getElementById('notification');
-        const notificationText = document.getElementById('notificationText');
+        // ============================================
+        // BACKEND SERVER SIMULATION (Socket.IO Logic)
+        // ============================================
+        
+        // This simulates the server-side logic
+        class ChatServer {
+            constructor() {
+                this.activeConnections = new Map(); // code -> {socketId, userName, partnerSocketId}
+                this.socketToCode = new Map(); // socketId -> code
+                this.userNames = new Map(); // socketId -> userName
+                this.partners = new Map(); // socketId -> partnerSocketId
+                
+                // In a real app, this would be on a separate server
+                console.log('Chat server initialized (simulated)');
+            }
+            
+            // Generate unique code
+            generateUniqueCode() {
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+                let code;
+                do {
+                    code = '';
+                    for (let i = 0; i < 6; i++) {
+                        code += chars.charAt(Math.floor(Math.random() * chars.length));
+                    }
+                } while (this.activeConnections.has(code));
+                return code;
+            }
+            
+            // Register new user with generated code
+            registerUser(socketId, userName) {
+                const code = this.generateUniqueCode();
+                this.activeConnections.set(code, {
+                    socketId: socketId,
+                    userName: userName,
+                    status: 'waiting',
+                    createdAt: new Date()
+                });
+                this.socketToCode.set(socketId, code);
+                this.userNames.set(socketId, userName);
+                
+                return code;
+            }
+            
+            // Connect two users using code
+            connectUsers(socketId, code, userName) {
+                const targetCode = code.toUpperCase();
+                
+                if (!this.activeConnections.has(targetCode)) {
+                    return { success: false, message: 'Code not found' };
+                }
+                
+                const targetUser = this.activeConnections.get(targetCode);
+                
+                if (targetUser.status === 'connected') {
+                    return { success: false, message: 'User already connected' };
+                }
+                
+                // Pair the users
+                targetUser.partnerSocketId = socketId;
+                targetUser.status = 'connected';
+                
+                // Register the connecting user
+                const currentUser = {
+                    socketId: socketId,
+                    userName: userName,
+                    partnerSocketId: targetUser.socketId,
+                    status: 'connected',
+                    code: targetCode
+                };
+                
+                this.activeConnections.set(socketId, currentUser);
+                this.socketToCode.set(socketId, `paired-${targetCode}`);
+                this.userNames.set(socketId, userName);
+                this.partners.set(socketId, targetUser.socketId);
+                this.partners.set(targetUser.socketId, socketId);
+                
+                return {
+                    success: true,
+                    targetUser: targetUser,
+                    currentUser: currentUser,
+                    code: targetCode
+                };
+            }
+            
+            // Send message from one user to another
+            sendMessage(fromSocketId, message) {
+                const partnerSocketId = this.partners.get(fromSocketId);
+                
+                if (!partnerSocketId) {
+                    return { success: false, message: 'No partner found' };
+                }
+                
+                const fromUserName = this.userNames.get(fromSocketId) || 'Unknown';
+                
+                return {
+                    success: true,
+                    fromSocketId: fromSocketId,
+                    fromUserName: fromUserName,
+                    toSocketId: partnerSocketId,
+                    message: message,
+                    timestamp: new Date().toISOString()
+                };
+            }
+            
+            // Remove user from active connections
+            disconnectUser(socketId) {
+                const code = this.socketToCode.get(socketId);
+                const partnerSocketId = this.partners.get(socketId);
+                
+                // Clean up all references
+                if (code) {
+                    this.activeConnections.delete(code);
+                }
+                
+                this.activeConnections.delete(socketId);
+                this.socketToCode.delete(socketId);
+                this.userNames.delete(socketId);
+                
+                if (partnerSocketId) {
+                    this.partners.delete(socketId);
+                    this.partners.delete(partnerSocketId);
+                    
+                    // Update partner's status
+                    const partnerData = this.activeConnections.get(partnerSocketId);
+                    if (partnerData) {
+                        partnerData.status = 'waiting';
+                        delete partnerData.partnerSocketId;
+                    }
+                    
+                    return partnerSocketId;
+                }
+                
+                return null;
+            }
+            
+            // Get user info
+            getUserInfo(socketId) {
+                return {
+                    userName: this.userNames.get(socketId),
+                    code: this.socketToCode.get(socketId),
+                    partner: this.partners.get(socketId)
+                };
+            }
+        }
+
+        // Initialize the server
+        const chatServer = new ChatServer();
+        
+        // ============================================
+        // FRONTEND APPLICATION
+        // ============================================
         
         // App State
-        let currentUser = localStorage.getItem('currentUser') || '';
-        let messages = JSON.parse(localStorage.getItem('chatMessages')) || [];
-        let onlineUsers = JSON.parse(localStorage.getItem('onlineUsers')) || [];
+        const appState = {
+            myCode: '',
+            otherCode: '',
+            connected: false,
+            connectedUserName: '',
+            connectedUserCode: '',
+            chatActive: false,
+            myName: `User${Math.floor(Math.random() * 9000) + 1000}`,
+            partnerName: '',
+            messages: [],
+            socketId: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            partnerSocketId: null
+        };
+
+        // DOM Elements
+        const myCodeDisplay = document.getElementById('myCodeDisplay');
+        const generateCodeBtn = document.getElementById('generateCodeBtn');
+        const copyCodeBtn = document.getElementById('copyCodeBtn');
+        const nextToEnterCodeBtn = document.getElementById('nextToEnterCodeBtn');
+        const otherCodeInput = document.getElementById('otherCodeInput');
+        const connectBtn = document.getElementById('connectBtn');
+        const backToMyCodeBtn = document.getElementById('backToMyCodeBtn');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const connectionInfo = document.getElementById('connectionInfo');
+        const connectedUserName = document.getElementById('connectedUserName');
+        const connectedUserCode = document.getElementById('connectedUserCode');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const startChatBtn = document.getElementById('startChatBtn');
+        const chatPanel = document.getElementById('chatPanel');
+        const chatWithUserName = document.getElementById('chatWithUserName');
+        const chatStatus = document.getElementById('chatStatus');
+        const endChatBtn = document.getElementById('endChatBtn');
+        const chatContainer = document.getElementById('chatContainer');
+        const chatInput = document.getElementById('chatInput');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const initialChatMessage = document.getElementById('initialChatMessage');
+        const serverStatus = document.getElementById('serverStatus');
         
-        // Initialize the app
-        function initApp() {
-            // Load recent users from localStorage
-            loadRecentUsers();
-            
-            // If a user is already selected, show chat interface
-            if (currentUser) {
-                showChatScreen();
-                addUserToOnlineList(currentUser);
-                loadMessages();
+        // Panels
+        const myCodePanel = document.getElementById('myCodePanel');
+        const enterCodePanel = document.getElementById('enterCodePanel');
+        const statusPanel = document.getElementById('statusPanel');
+        
+        // Flow Steps
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+
+        // Update server status indicator
+        function updateServerStatus(connected) {
+            if (connected) {
+                serverStatus.className = 'server-status online';
+                serverStatus.innerHTML = '<i class="fas fa-circle"></i> Server: Online';
             } else {
-                showUsernameScreen();
+                serverStatus.className = 'server-status offline';
+                serverStatus.innerHTML = '<i class="fas fa-circle"></i> Server: Offline';
             }
-            
-            // Simulate other users joining (for demo purposes)
-            simulateOtherUsers();
         }
-        
-        // Show username selection screen
-        function showUsernameScreen() {
-            usernameScreen.style.display = 'flex';
-            chatScreen.style.display = 'none';
-        }
-        
-        // Show chat screen
-        function showChatScreen() {
-            usernameScreen.style.display = 'none';
-            chatScreen.style.display = 'flex';
-            usernameDisplay.textContent = currentUser;
+
+        // Initialize with a generated code
+        function initApp() {
+            // Set server as online
+            updateServerStatus(true);
             
-            // Focus on message input
-            setTimeout(() => {
-                messageInput.focus();
-            }, 100);
-        }
-        
-        // Load recent users from localStorage
-        function loadRecentUsers() {
-            const recentUsers = JSON.parse(localStorage.getItem('recentUsers')) || [];
-            recentUsersContainer.innerHTML = '';
+            // Generate initial code
+            generateNewCode();
             
-            if (recentUsers.length === 0) {
-                recentUsersContainer.innerHTML = '<p>No recent users found</p>';
-                return;
+            // Update flow step
+            updateFlowStep(1);
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            console.log('App initialized with socket ID:', appState.socketId);
+        }
+
+        // Generate new code
+        function generateNewCode() {
+            appState.myCode = chatServer.generateUniqueCode();
+            myCodeDisplay.textContent = appState.myCode;
+            
+            // Register user with server
+            chatServer.registerUser(appState.socketId, appState.myName);
+            
+            console.log('Generated code:', appState.myCode);
+        }
+
+        // Update connection flow visualization
+        function updateFlowStep(step) {
+            // Reset all steps
+            step1.classList.remove('completed', 'active');
+            step2.classList.remove('completed', 'active');
+            step3.classList.remove('completed', 'active');
+            
+            // Update based on current step
+            if (step === 1) {
+                step1.classList.add('active');
+            } else if (step === 2) {
+                step1.classList.add('completed');
+                step2.classList.add('active');
+            } else if (step === 3) {
+                step1.classList.add('completed');
+                step2.classList.add('completed');
+                step3.classList.add('active');
             }
-            
-            recentUsers.forEach(user => {
-                const userBtn = document.createElement('button');
-                userBtn.className = 'user-btn';
-                userBtn.textContent = user;
-                userBtn.addEventListener('click', () => {
-                    usernameInput.value = user;
-                });
-                recentUsersContainer.appendChild(userBtn);
-            });
         }
-        
-        // Add a user to recent users list
-        function addToRecentUsers(username) {
-            let recentUsers = JSON.parse(localStorage.getItem('recentUsers')) || [];
+
+        // Update connection status
+        function updateConnectionStatus(connected, message = '') {
+            appState.connected = connected;
             
-            // Remove if already exists
-            recentUsers = recentUsers.filter(user => user !== username);
-            
-            // Add to the beginning
-            recentUsers.unshift(username);
-            
-            // Keep only last 5 users
-            if (recentUsers.length > 5) {
-                recentUsers = recentUsers.slice(0, 5);
-            }
-            
-            localStorage.setItem('recentUsers', JSON.stringify(recentUsers));
-            loadRecentUsers();
-        }
-        
-        // Add user to online list
-        function addUserToOnlineList(username) {
-            // Check if user is already in the list
-            if (!onlineUsers.includes(username)) {
-                onlineUsers.push(username);
-                localStorage.setItem('onlineUsers', JSON.stringify(onlineUsers));
-            }
-            
-            updateOnlineUsersDisplay();
-        }
-        
-        // Remove user from online list
-        function removeUserFromOnlineList(username) {
-            onlineUsers = onlineUsers.filter(user => user !== username);
-            localStorage.setItem('onlineUsers', JSON.stringify(onlineUsers));
-            updateOnlineUsersDisplay();
-        }
-        
-        // Update online users display
-        function updateOnlineUsersDisplay() {
-            onlineUsersContainer.innerHTML = '';
-            
-            // Add current user first
-            const currentUserItem = document.createElement('li');
-            currentUserItem.className = 'active';
-            currentUserItem.innerHTML = `
-                <div class="user-avatar">${currentUser.charAt(0).toUpperCase()}</div>
-                <div>
-                    <strong>${currentUser}</strong> (You)
-                    <div><span class="online-status online"></span> Online</div>
-                </div>
-            `;
-            onlineUsersContainer.appendChild(currentUserItem);
-            
-            // Add other users
-            onlineUsers.forEach(user => {
-                if (user !== currentUser) {
-                    const userItem = document.createElement('li');
-                    userItem.innerHTML = `
-                        <div class="user-avatar">${user.charAt(0).toUpperCase()}</div>
-                        <div>
-                            <strong>${user}</strong>
-                            <div><span class="online-status online"></span> Online</div>
-                        </div>
-                    `;
-                    onlineUsersContainer.appendChild(userItem);
+            if (connected) {
+                statusDot.classList.add('connected');
+                statusText.textContent = 'Connected';
+                connectionInfo.classList.remove('hidden');
+                startChatBtn.classList.remove('hidden');
+                
+                if (message) {
+                    showSystemMessage(message);
                 }
-            });
-        }
-        
-        // Load messages from localStorage
-        function loadMessages() {
-            messagesContainer.innerHTML = '';
-            
-            if (messages.length === 0) {
-                // Show welcome message
-                const welcomeMsg = document.createElement('div');
-                welcomeMsg.className = 'welcome-message';
-                welcomeMsg.innerHTML = `
-                    <div class="message received">
-                        <div class="message-content">
-                            Welcome to the chat, ${currentUser}! Start sending messages to communicate with others.
-                        </div>
-                        <div class="message-info">
-                            <span class="message-sender">System</span>
-                            <span class="message-time">Just now</span>
-                        </div>
-                    </div>
-                `;
-                messagesContainer.appendChild(welcomeMsg);
-                return;
+            } else {
+                statusDot.classList.remove('connected');
+                statusText.textContent = 'Disconnected';
+                connectionInfo.classList.add('hidden');
+                startChatBtn.classList.add('hidden');
+                
+                if (message) {
+                    showSystemMessage(message);
+                }
             }
-            
-            // Display all messages
-            messages.forEach(msg => {
-                addMessageToDisplay(msg.sender, msg.text, msg.time, msg.sender === currentUser);
-            });
-            
-            // Scroll to the bottom
-            scrollToBottom();
         }
-        
-        // Add a message to the display
-        function addMessageToDisplay(sender, text, time, isSent = false) {
-            const messageElement = document.createElement('div');
-            messageElement.className = `message ${isSent ? 'sent' : 'received'}`;
+
+        // Show system message
+        function showSystemMessage(message) {
+            const systemMsg = document.createElement('div');
+            systemMsg.className = 'system-message';
+            systemMsg.textContent = message;
+            chatContainer.appendChild(systemMsg);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Add message to chat
+        function addMessageToChat(text, sender, isSent = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
             
-            const formattedTime = new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            messageElement.innerHTML = `
+            messageDiv.innerHTML = `
+                <div class="message-sender">${sender}</div>
                 <div class="message-content">${text}</div>
-                <div class="message-info">
-                    <span class="message-sender">${isSent ? 'You' : sender}</span>
-                    <span class="message-time">${formattedTime}</span>
-                </div>
+                <div class="message-time">${time}</div>
             `;
             
-            messagesContainer.appendChild(messageElement);
-            scrollToBottom();
-        }
-        
-        // Send a new message
-        function sendMessage() {
-            const text = messageInput.value.trim();
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
             
-            if (!text) {
-                showNotification('Please enter a message');
+            // Store message
+            appState.messages.push({
+                text,
+                sender,
+                time,
+                isSent
+            });
+        }
+
+        // Simulate receiving a message (for demo)
+        function simulateIncomingMessage() {
+            if (!appState.chatActive || !appState.partnerSocketId) return;
+            
+            // Only simulate if we haven't received a message in the last 10 seconds
+            const lastMessageTime = appState.messages
+                .filter(m => !m.isSent)
+                .sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+                
+            if (lastMessageTime && (Date.now() - new Date(lastMessageTime.time).getTime()) < 10000) {
                 return;
             }
             
-            const message = {
-                sender: currentUser,
-                text: text,
-                time: new Date().toISOString()
-            };
+            setTimeout(() => {
+                if (!appState.chatActive) return;
+                
+                const responses = [
+                    "Hi there! How are you?",
+                    "That's interesting! Tell me more.",
+                    "I agree with you on that point.",
+                    "What do you think about this weather?",
+                    "Thanks for chatting with me!",
+                    "Have you used this app before?",
+                    "This real-time chat is working well!",
+                    "What are your plans for today?"
+                ];
+                
+                const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                
+                // Simulate message from partner
+                const messageData = {
+                    fromSocketId: appState.partnerSocketId,
+                    fromUserName: appState.partnerName,
+                    message: randomResponse,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Add to chat
+                addMessageToChat(messageData.message, appState.partnerName, false);
+            }, 3000 + Math.random() * 7000);
+        }
+
+        // Send a message
+        function sendMessage() {
+            const messageText = chatInput.value.trim();
             
-            // Add to messages array
-            messages.push(message);
-            
-            // Keep only last 100 messages
-            if (messages.length > 100) {
-                messages = messages.slice(messages.length - 100);
+            if (!messageText || !appState.chatActive) {
+                return;
             }
             
-            // Save to localStorage
-            localStorage.setItem('chatMessages', JSON.stringify(messages));
-            
-            // Add to display
-            addMessageToDisplay(currentUser, text, message.time, true);
+            // Add my message to chat
+            addMessageToChat(messageText, 'You', true);
             
             // Clear input
-            messageInput.value = '';
+            chatInput.value = '';
             
-            // Show notification for other users (simulated)
-            simulateMessageReceipt();
-        }
-        
-        // Scroll to the bottom of messages
-        function scrollToBottom() {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
-        
-        // Show notification
-        function showNotification(text) {
-            notificationText.textContent = text;
-            notification.style.display = 'block';
+            // Send to server (simulated)
+            const result = chatServer.sendMessage(appState.socketId, messageText);
             
+            if (result.success) {
+                console.log('Message sent:', messageText);
+                
+                // Start simulation for incoming response
+                simulateIncomingMessage();
+            }
+        }
+
+        // Connect to another user's code
+        function connectToCode() {
+            const code = otherCodeInput.value.trim().toUpperCase();
+            
+            if (!code || code.length !== 6) {
+                alert('Please enter a 6-character code');
+                return;
+            }
+            
+            appState.otherCode = code;
+            
+            // Show connecting status
+            updateConnectionStatus(false, 'Connecting...');
+            
+            // Simulate connection process
             setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
+                // Connect with server
+                const result = chatServer.connectUsers(
+                    appState.socketId, 
+                    code, 
+                    appState.myName
+                );
+                
+                if (result.success) {
+                    // Successfully connected
+                    appState.partnerName = result.targetUser.userName;
+                    appState.partnerSocketId = result.targetUser.socketId;
+                    appState.connectedUserCode = result.code;
+                    
+                    updateConnectionStatus(true, 'Connection successful!');
+                    
+                    // Update UI
+                    connectedUserName.textContent = appState.partnerName;
+                    connectedUserCode.textContent = result.code;
+                    
+                    // Move to status panel
+                    enterCodePanel.classList.add('hidden');
+                    statusPanel.classList.remove('hidden');
+                    updateFlowStep(3);
+                    
+                    // Show success message
+                    showSystemMessage(`You are now connected with ${appState.partnerName}!`);
+                    
+                    console.log('Connected with:', appState.partnerName);
+                } else {
+                    // Connection failed
+                    alert(result.message);
+                    updateConnectionStatus(false, 'Connection failed');
+                }
+            }, 1000);
         }
-        
-        // Simulate other users for demo purposes
-        function simulateOtherUsers() {
-            const demoUsers = ['Alice', 'Bob', 'Charlie', 'Diana', 'Ethan'];
+
+        // Start chat
+        function startChat() {
+            appState.chatActive = true;
             
-            // Add demo users to online list
-            demoUsers.forEach(user => {
-                if (!onlineUsers.includes(user) && user !== currentUser) {
-                    onlineUsers.push(user);
+            // Update UI
+            statusPanel.classList.add('hidden');
+            chatPanel.classList.remove('hidden');
+            
+            // Set chat partner name
+            chatWithUserName.textContent = appState.partnerName;
+            chatStatus.textContent = 'Online';
+            
+            // Show initial message
+            initialChatMessage.classList.remove('hidden');
+            
+            // Focus on chat input
+            setTimeout(() => {
+                chatInput.focus();
+            }, 300);
+            
+            // Start simulating incoming messages
+            simulateIncomingMessage();
+        }
+
+        // End chat and disconnect
+        function endChat() {
+            appState.chatActive = false;
+            appState.connected = false;
+            
+            // Disconnect from server
+            const partnerSocketId = chatServer.disconnectUser(appState.socketId);
+            
+            // Reset UI
+            chatPanel.classList.add('hidden');
+            myCodePanel.classList.remove('hidden');
+            
+            // Clear chat
+            chatContainer.innerHTML = '<div class="system-message" id="initialChatMessage">Chat started! You can now send messages.</div>';
+            initialChatMessage.id = 'initialChatMessage';
+            
+            // Reset app state
+            appState.messages = [];
+            appState.otherCode = '';
+            appState.partnerName = '';
+            appState.partnerSocketId = null;
+            otherCodeInput.value = '';
+            
+            // Generate new code
+            generateNewCode();
+            
+            // Update flow
+            updateFlowStep(1);
+            updateConnectionStatus(false, 'Disconnected');
+        }
+
+        // Setup all event listeners
+        function setupEventListeners() {
+            // Generate new code
+            generateCodeBtn.addEventListener('click', () => {
+                generateNewCode();
+                
+                // Show feedback
+                const originalText = generateCodeBtn.innerHTML;
+                generateCodeBtn.innerHTML = '<i class="fas fa-check"></i> Code Generated';
+                generateCodeBtn.classList.add('btn-success');
+                
+                setTimeout(() => {
+                    generateCodeBtn.innerHTML = originalText;
+                    generateCodeBtn.classList.remove('btn-success');
+                }, 1500);
+            });
+            
+            // Copy code to clipboard
+            copyCodeBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(appState.myCode).then(() => {
+                    // Show success feedback
+                    const originalText = copyCodeBtn.innerHTML;
+                    copyCodeBtn.innerHTML = '<i class="fas fa-check"></i> Code Copied';
+                    copyCodeBtn.classList.add('btn-success');
+                    
+                    setTimeout(() => {
+                        copyCodeBtn.innerHTML = originalText;
+                        copyCodeBtn.classList.remove('btn-success');
+                    }, 2000);
+                });
+            });
+            
+            // Move to enter code panel
+            nextToEnterCodeBtn.addEventListener('click', () => {
+                myCodePanel.classList.add('hidden');
+                enterCodePanel.classList.remove('hidden');
+                updateFlowStep(2);
+                otherCodeInput.focus();
+            });
+            
+            // Connect to other user's code
+            connectBtn.addEventListener('click', connectToCode);
+            
+            // Enter key to connect
+            otherCodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    connectToCode();
                 }
             });
             
-            localStorage.setItem('onlineUsers', JSON.stringify(onlineUsers));
-            updateOnlineUsersDisplay();
-            
-            // Simulate occasional messages from other users
-            setInterval(() => {
-                if (Math.random() > 0.7 && messages.length > 0) {
-                    const randomUser = demoUsers[Math.floor(Math.random() * demoUsers.length)];
-                    const demoMessages = [
-                        "Hello everyone!",
-                        "How's everyone doing today?",
-                        "This chat app is pretty cool!",
-                        "Anyone working on interesting projects?",
-                        "Have a great day everyone!",
-                        "Real-time chat is so convenient."
-                    ];
-                    
-                    const randomMessage = demoMessages[Math.floor(Math.random() * demoMessages.length)];
-                    
-                    const message = {
-                        sender: randomUser,
-                        text: randomMessage,
-                        time: new Date().toISOString()
-                    };
-                    
-                    messages.push(message);
-                    
-                    // Keep only last 100 messages
-                    if (messages.length > 100) {
-                        messages = messages.slice(messages.length - 100);
-                    }
-                    
-                    localStorage.setItem('chatMessages', JSON.stringify(messages));
-                    
-                    // Only add to display if we're on the chat screen
-                    if (currentUser && chatScreen.style.display !== 'none') {
-                        addMessageToDisplay(randomUser, randomMessage, message.time, false);
-                        showNotification(`${randomUser} sent a message`);
-                    }
+            // Auto-uppercase and limit code input
+            otherCodeInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (this.value.length > 6) {
+                    this.value = this.value.substring(0, 6);
                 }
-            }, 10000); // Every 10 seconds
-        }
-        
-        // Simulate receiving messages from other users
-        function simulateMessageReceipt() {
-            // In a real app, this would be handled by a server
-            // For demo, we'll just show a notification
-            const demoUsers = ['Alice', 'Bob', 'Charlie', 'Diana', 'Ethan'];
-            const randomUser = demoUsers[Math.floor(Math.random() * demoUsers.length)];
+            });
             
-            // Random chance to simulate a reply
-            if (Math.random() > 0.5) {
+            // Back to my code panel
+            backToMyCodeBtn.addEventListener('click', () => {
+                enterCodePanel.classList.add('hidden');
+                myCodePanel.classList.remove('hidden');
+                updateFlowStep(1);
+            });
+            
+            // Disconnect
+            disconnectBtn.addEventListener('click', () => {
+                appState.connected = false;
+                statusPanel.classList.add('hidden');
+                myCodePanel.classList.remove('hidden');
+                updateFlowStep(1);
+                updateConnectionStatus(false, 'Disconnected');
+                
+                // Disconnect from server
+                chatServer.disconnectUser(appState.socketId);
+            });
+            
+            // Start chat
+            startChatBtn.addEventListener('click', startChat);
+            
+            // End chat
+            endChatBtn.addEventListener('click', endChat);
+            
+            // Send message on button click
+            sendMessageBtn.addEventListener('click', sendMessage);
+            
+            // Send message on Enter key
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Mobile-specific optimizations
+            document.addEventListener('touchstart', function() {}, {passive: true});
+            
+            // Prevent zoom on input focus for mobile
+            chatInput.addEventListener('focus', function() {
                 setTimeout(() => {
-                    const replies = [
-                        "That's interesting!",
-                        "I agree with that.",
-                        "Thanks for sharing!",
-                        "What do others think?",
-                        "Good point!"
-                    ];
-                    
-                    const randomReply = replies[Math.floor(Math.random() * replies.length)];
-                    
-                    const message = {
-                        sender: randomUser,
-                        text: randomReply,
-                        time: new Date().toISOString()
-                    };
-                    
-                    messages.push(message);
-                    
-                    // Keep only last 100 messages
-                    if (messages.length > 100) {
-                        messages = messages.slice(messages.length - 100);
-                    }
-                    
-                    localStorage.setItem('chatMessages', JSON.stringify(messages));
-                    
-                    // Only add to display if we're on the chat screen
-                    if (currentUser && chatScreen.style.display !== 'none') {
-                        addMessageToDisplay(randomUser, randomReply, message.time, false);
-                        showNotification(`${randomUser} replied to your message`);
-                    }
-                }, 2000 + Math.random() * 3000); // Random delay between 2-5 seconds
-            }
+                    this.scrollIntoView({behavior: 'smooth', block: 'center'});
+                }, 300);
+            });
         }
+
+        // Initialize the app when page loads
+        window.addEventListener('DOMContentLoaded', initApp);
         
-        // Event Listeners
-        startChatBtn.addEventListener('click', () => {
-            const username = usernameInput.value.trim();
-            
-            if (!username) {
-                showNotification('Please enter a username');
-                usernameInput.focus();
-                return;
-            }
-            
-            if (username.length > 20) {
-                showNotification('Username must be 20 characters or less');
-                return;
-            }
-            
-            // Set current user
-            currentUser = username;
-            localStorage.setItem('currentUser', currentUser);
-            
-            // Add to recent users
-            addToRecentUsers(username);
-            
-            // Add to online users
-            addUserToOnlineList(username);
-            
-            // Show chat screen
-            showChatScreen();
-            
-            // Load messages
-            loadMessages();
-            
-            // Show welcome notification
-            showNotification(`Welcome to the chat, ${username}!`);
-        });
-        
-        changeUserBtn.addEventListener('click', () => {
-            // Remove current user from online list
-            removeUserFromOnlineList(currentUser);
-            
-            // Clear current user
-            currentUser = '';
-            localStorage.removeItem('currentUser');
-            
-            // Show username screen
-            showUsernameScreen();
-            
-            // Clear input and focus
-            usernameInput.value = '';
-            usernameInput.focus();
-        });
-        
-        sendBtn.addEventListener('click', sendMessage);
-        
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
+        // Prevent accidental refresh
+        window.addEventListener('beforeunload', (e) => {
+            if (appState.chatActive) {
+                e.preventDefault();
+                e.returnValue = 'You are leaving the chat. Are you sure you want to leave?';
+                return e.returnValue;
             }
         });
-        
-        // Initialize the app
-        initApp();
     </script>
 </body>
 </html>
